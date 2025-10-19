@@ -254,7 +254,7 @@ html, body {
 
 .modal-content {
     background-color: white;
-    margin: 2% auto;
+    margin: 1% auto;
     width: 95%;
     max-width: 400px;
     border-radius: 15px;
@@ -299,7 +299,7 @@ html, body {
 
 .slider-container {
     position: relative;
-    height: 2500px;
+    height: 250px;
     overflow: hidden;
     flex-shrink: 0;
 }
@@ -1215,4 +1215,51 @@ html, body {
 @keyframes slideInRight {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
+}
+
+/* Ranking Badge Styles */
+.card-image-container {
+    position: relative;
+}
+
+.ranking-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    z-index: 2;
+}
+
+/* Top 3 ranking colors */
+.ranking-badge:nth-child(1) { /* 1st place */
+    background: linear-gradient(135deg, #FFD700 0%, #FF8C00 100%);
+}
+
+.ranking-badge:nth-child(2) { /* 2nd place */
+    background: linear-gradient(135deg, #C0C0C0 0%, #A9A9A9 100%);
+}
+
+.ranking-badge:nth-child(3) { /* 3rd place */
+    background: linear-gradient(135deg, #CD7F32 0%, #8B4513 100%);
+}
+
+/* Highlight top rated cards */
+.hairstyle-card:nth-child(-n+3) {
+    border: 2px solid #d4af37;
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.3);
+}
+
+.hairstyle-card:nth-child(1) {
+    border: 2px solid #FFD700;
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4);
 }
