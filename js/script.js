@@ -1,4 +1,4 @@
-// script.js - Core application functionality with FAST RATING DISPLAY
+// script.js - Core application functionality with FAST RATING DISPLAY and SORTING
 
 // Global variables
 window.currentFilter = 'all';
@@ -23,7 +23,26 @@ function initializeDOMElements() {
     rating = document.getElementById('rating');
 }
 
-// Generate hairstyle cards IMMEDIATELY - FAST VERSION
+// Sort hairstyles by rating count (highest first) then by average rating
+function sortHairstylesByRating(hairstylesList) {
+    return hairstylesList.sort((a, b) => {
+        // First sort by number of ratings (highest first)
+        const aRatingCount = a.userRatings ? a.userRatings.length : 0;
+        const bRatingCount = b.userRatings ? b.userRatings.length : 0;
+        
+        if (bRatingCount !== aRatingCount) {
+            return bRatingCount - aRatingCount;
+        }
+        
+        // If same number of ratings, sort by average rating (highest first)
+        const aAvgRating = calculateAverageRating(a.userRatings);
+        const bAvgRating = calculateAverageRating(b.userRatings);
+        
+        return bAvgRating - aAvgRating;
+    });
+}
+
+// Generate hairstyle cards IMMEDIATELY - SORTED BY RATING
 function generateHairstyleCards(filter = 'all') {
     if (!hairstyleGrid) {
         console.error('hairstyleGrid not found');
@@ -32,9 +51,18 @@ function generateHairstyleCards(filter = 'all') {
     
     hairstyleGrid.innerHTML = '';
     
-    const filteredHairstyles = filter === 'all' 
+    let filteredHairstyles = filter === 'all' 
         ? hairstyles 
         : hairstyles.filter(style => style.category === filter);
+    
+    // 🔥 SORT HAIRSTYLES BY RATING (Highest rating count first)
+    filteredHairstyles = sortHairstylesByRating(filteredHairstyles);
+    
+    console.log('📊 Sorted hairstyles by rating:', filteredHairstyles.map(h => ({
+        name: h.name,
+        ratingCount: h.userRatings ? h.userRatings.length : 0,
+        avgRating: calculateAverageRating(h.userRatings)
+    })));
     
     if (filteredHairstyles.length === 0) {
         hairstyleGrid.innerHTML = `
@@ -47,7 +75,7 @@ function generateHairstyleCards(filter = 'all') {
         return;
     }
     
-    filteredHairstyles.forEach(hairstyle => {
+    filteredHairstyles.forEach((hairstyle, index) => {
         // Ensure userRatings exists - use whatever data is available immediately
         if (!hairstyle.userRatings) {
             hairstyle.userRatings = [];
@@ -59,14 +87,21 @@ function generateHairstyleCards(filter = 'all') {
         
         const card = document.createElement('div');
         card.className = 'hairstyle-card';
+        
+        // Add ranking badge for top rated hairstyles
+        const rankingBadge = index < 3 ? `<div class="ranking-badge">${index + 1}</div>` : '';
+        
         card.innerHTML = `
-            <img src="${hairstyle.images[0]}" alt="${hairstyle.name}" onerror="this.src='https://via.placeholder.com/300x150?text=No+Image'">
+            <div class="card-image-container">
+                <img src="${hairstyle.images[0]}" alt="${hairstyle.name}" onerror="this.src='https://via.placeholder.com/300x150?text=No+Image'">
+                ${rankingBadge}
+            </div>
             <div class="hairstyle-info">
                 <div class="hairstyle-name">${hairstyle.name}</div>
                 <div class="hairstyle-price">${hairstyle.price}</div>
                 <div class="rating-display">
                     ${generateStarRating(avgRating)} 
-                    <span class="rating-count">(${hairstyle.userRatings.length})</span>
+                    <span class="rating-count">(${hairstyle.userRatings.length} ယောက်သတ်မှတ်ထားသည်)</span>
                 </div>
                 <button class="rating-btn" data-hairstyle-id="${hairstyle.id}">
                     ${isRated ? '✅ Rated' : '⭐ Rate'}
@@ -109,7 +144,7 @@ function generateHairstyleCards(filter = 'all') {
         hairstyleGrid.appendChild(card);
     });
     
-    console.log('✅ All cards generated successfully - FAST VERSION');
+    console.log('✅ All cards generated successfully - SORTED BY RATING');
 }
 
 // Simple rating calculation for immediate display
@@ -301,9 +336,9 @@ function refreshDisplayWithUpdatedRatings() {
     }
 }
 
-// Main initialization - ULTRA FAST VERSION
+// Main initialization - ULTRA FAST VERSION WITH SORTING
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOM loaded, initializing ULTRA FAST app...');
+    console.log('🚀 DOM loaded, initializing ULTRA FAST app WITH SORTING...');
     
     // Initialize DOM elements first
     initializeDOMElements();
@@ -320,7 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // STEP 2: Try to load cached ratings (for returning visitors)
     const hasCachedData = loadCachedRatings();
     
-    // STEP 3: Generate hairstyle cards IMMEDIATELY with available data
+    // STEP 3: Generate hairstyle cards IMMEDIATELY with available data (SORTED)
     generateHairstyleCards();
     
     // STEP 4: Initialize other systems
@@ -346,14 +381,14 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('🔄 Loading fresh ratings in background...');
             window.RatingSystem.loadRatingsFromSheet().then(success => {
                 if (success) {
-                    console.log('✅ Fresh ratings loaded, refreshing display');
+                    console.log('✅ Fresh ratings loaded, refreshing display WITH SORTING');
                     refreshDisplayWithUpdatedRatings();
                 }
             });
         }
     }, 1500);
     
-    console.log('✅ ULTRA FAST App initialization complete');
+    console.log('✅ ULTRA FAST App initialization complete WITH SORTING');
 });
 
 // Touch events for mobile
@@ -368,5 +403,6 @@ window.CoreApp = {
     refreshDisplayWithUpdatedRatings,
     calculateAverageRating,
     generateStarRating,
-    hasVisitorRated
+    hasVisitorRated,
+    sortHairstylesByRating
 };
