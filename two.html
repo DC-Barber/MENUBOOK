@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GIF Slider with Links</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            touch-action: pan-y;
+        }
+
+        .slider-container {
+            position: relative;
+            max-width: 800px;
+            width: 90%;
+            margin: 0 auto;
+            overflow: hidden;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            background: #fff;
+        }
+
+        .slider {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        .slide {
+            min-width: 100%;
+            position: relative;
+        }
+
+        .slide img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            display: block;
+            pointer-events: none; /* Prevent image from interfering with link clicks */
+        }
+
+        .slide-link {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            text-decoration: none;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .slide-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(transparent, rgba(0,0,0,0.8));
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            z-index: 1;
+        }
+
+        .slider-nav {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            transform: translateY(-50%);
+            padding: 0 15px;
+            z-index: 3;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.8);
+            border: none;
+            padding: 12px 17px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,1);
+            transform: scale(1.1);
+        }
+
+        .slider-dots {
+            position: absolute;
+            bottom: 5px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            z-index: 3;
+        }
+
+        .dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.5);
+            cursor: pointer;
+            transition: all 0.4s;
+        }
+
+        .dot.active {
+            background: white;
+            transform: scale(1.2);
+        }
+
+        .dot:hover {
+            background: rgba(255,255,255,0.8);
+        }
+
+        /* Loading animation */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 400px;
+            background: #f0f0f0;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top-color: #3498db;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .slider-container {
+                width: 9း%;
+            }
+            
+            .slide img {
+                height: 80px;
+            }
+            
+            .nav-btn {
+                padding: 10px 14px;
+                font-size: 18px;
+            }
+            
+            .slide-caption {
+                font-size: 15px;
+                padding: 15px;
+            }
+        }
+
+       
+    </style>
+</head>
+<body>
+    <div class="slider-container">
+        <div class="slider">
+            <!-- Slide 1 - Facebook -->
+            <div class="slide">
+                      <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+                <img src="gifs/g3.gif" alt="Facebook GIF" style="display:none;">
+                <a href="https://www.facebook.com/profile.php?id=61579165798892" target="_blank" class="slide-link"></a>
+                <div class="slide-caption"> The ONE (laundry Service)</div>
+           
+            </div>
+            
+            <!-- Slide 2 - Instagram -->
+            <div class="slide">
+                              <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+                <img src="gifs/g2.gif" alt="Instagram GIF" style="display:none;">
+                <a href="https://youtube.com/@anordinaryguy-akz?si=oJKf8yoYE7IJA3a9" target="_blank" class="slide-link"></a>
+                <div class="slide-caption">An Ordinary Guy</div>
+              
+            </div>
+          
+            
+            <!-- Slide 3 - Google -->
+            <div class="slide">
+                               <div class="loading">
+                    <div class="spinner"></div>
+                </div>
+                <img src="gifs/g4.gif" alt="Google GIF" style="display:none;">
+                <a href="https://vm.tiktok.com/ZSH7mRdUM1YHj-Wr02Y/" target="_blank" class="slide-link"></a>
+                <div class="slide-caption">Mr Delo</div>
+            </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="slider-nav">
+            <button class="nav-btn prev">❮</button>
+            <button class="nav-btn next">❯</button>
+        </div>
+
+        <!-- Dots Indicator -->
+        <div class="slider-dots">
+            <span class="dot active" data-slide="0"></span>
+            <span class="dot" data-slide="1"></span>
+            <span class="dot" data-slide="2"></span>
+        </div>
+    </div>
+
+    <script>
+        class GIFSlider {
+            constructor() {
+                this.slider = document.querySelector('.slider');
+                this.slides = document.querySelectorAll('.slide');
+                this.dots = document.querySelectorAll('.dot');
+                this.prevBtn = document.querySelector('.prev');
+                this.nextBtn = document.querySelector('.next');
+                this.images = document.querySelectorAll('.slide img');
+                
+                this.currentSlide = 0;
+                this.slideInterval = null;
+                this.autoSlideDelay = 4000; // 4 seconds
+                
+                this.init();
+            }
+            
+            init() {
+                // Preload images and remove loading indicators
+                this.preloadImages();
+                
+                // Event listeners
+                this.prevBtn.addEventListener('click', () => this.prevSlide());
+                this.nextBtn.addEventListener('click', () => this.nextSlide());
+                
+                // Dot navigation
+                this.dots.forEach(dot => {
+                    dot.addEventListener('click', (e) => {
+                        const slideIndex = parseInt(e.target.dataset.slide);
+                        this.goToSlide(slideIndex);
+                    });
+                });
+                
+                // Start auto slide
+                this.startAutoSlide();
+                
+                // Pause auto slide on hover
+                this.slider.parentElement.addEventListener('mouseenter', () => {
+                    this.stopAutoSlide();
+                });
+                
+                this.slider.parentElement.addEventListener('mouseleave', () => {
+                    this.startAutoSlide();
+                });
+                
+                // Touch events for mobile
+                this.setupTouchEvents();
+            }
+            
+            preloadImages() {
+                this.images.forEach((img, index) => {
+                    img.onload = () => {
+                        // Hide loading spinner and show image
+                        const loadingElement = img.previousElementSibling;
+                        if (loadingElement && loadingElement.classList.contains('loading')) {
+                            loadingElement.style.display = 'none';
+                        }
+                        img.style.display = 'block';
+                    };
+                    
+                    // Trigger load in case image is cached
+                    if (img.complete) {
+                        img.onload();
+                    }
+                });
+            }
+            
+            setupTouchEvents() {
+                let startX = 0;
+                let endX = 0;
+                
+                this.slider.parentElement.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                });
+                
+                this.slider.parentElement.addEventListener('touchend', (e) => {
+                    endX = e.changedTouches[0].clientX;
+                    this.handleSwipe(startX, endX);
+                });
+            }
+            
+            handleSwipe(startX, endX) {
+                const swipeThreshold = 50;
+                
+                if (startX - endX > swipeThreshold) {
+                    // Swipe left - next slide
+                    this.nextSlide();
+                } else if (endX - startX > swipeThreshold) {
+                    // Swipe right - previous slide
+                    this.prevSlide();
+                }
+            }
+            
+            nextSlide() {
+                this.currentSlide = (this.currentSlide + 1) % this.slides.length;
+                this.updateSlider();
+            }
+            
+            prevSlide() {
+                this.currentSlide = (this.currentSlide - 1 + this.slides.length) % this.slides.length;
+                this.updateSlider();
+            }
+            
+            goToSlide(slideIndex) {
+                this.currentSlide = slideIndex;
+                this.updateSlider();
+            }
+            
+            updateSlider() {
+                this.slider.style.transform = `translateX(-${this.currentSlide * 100}%)`;
+                
+                // Update dots
+                this.dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+                
+                // Reset auto slide timer
+                this.restartAutoSlide();
+            }
+            
+            startAutoSlide() {
+                this.stopAutoSlide();
+                this.slideInterval = setInterval(() => {
+                    this.nextSlide();
+                }, this.autoSlideDelay);
+            }
+            
+            stopAutoSlide() {
+                if (this.slideInterval) {
+                    clearInterval(this.slideInterval);
+                    this.slideInterval = null;
+                }
+            }
+            
+            restartAutoSlide() {
+                this.stopAutoSlide();
+                this.startAutoSlide();
+            }
+        }
+        
+        // Prevent zooming with pinch gesture
+        document.addEventListener('gesturestart', function(e) {
+            e.preventDefault();
+        });
+        
+        document.addEventListener('gesturechange', function(e) {
+            e.preventDefault();
+        });
+        
+        document.addEventListener('gestureend', function(e) {
+            e.preventDefault();
+        });
+        
+        // Initialize slider when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new GIFSlider();
+        });
+    </script>
+</body>
+</html>
