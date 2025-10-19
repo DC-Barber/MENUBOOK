@@ -1,4 +1,4 @@
-// script.js - Core application functionality with Individual Hairstyle Rating Management
+// script.js - Core application functionality with FAST RATING DISPLAY
 
 // Global variables
 window.currentFilter = 'all';
@@ -23,7 +23,7 @@ function initializeDOMElements() {
     rating = document.getElementById('rating');
 }
 
-// Generate hairstyle cards with filter and individual rating status - FIXED VERSION
+// Generate hairstyle cards IMMEDIATELY - FAST VERSION
 function generateHairstyleCards(filter = 'all') {
     if (!hairstyleGrid) {
         console.error('hairstyleGrid not found');
@@ -48,20 +48,14 @@ function generateHairstyleCards(filter = 'all') {
     }
     
     filteredHairstyles.forEach(hairstyle => {
-        // Ensure userRatings exists
+        // Ensure userRatings exists - use whatever data is available immediately
         if (!hairstyle.userRatings) {
             hairstyle.userRatings = [];
         }
         
-        const avgRating = window.RatingSystem ? window.RatingSystem.calculateAverageRating(hairstyle.userRatings) : 0;
-        const isRated = window.RatingSystem ? window.RatingSystem.hasVisitorRated(hairstyle.id) : false;
-        
-        console.log(`🎨 Generating card for ${hairstyle.name}:`, {
-            id: hairstyle.id,
-            ratings: hairstyle.userRatings,
-            avgRating: avgRating,
-            isRated: isRated
-        });
+        // Use simple calculation for immediate display
+        const avgRating = calculateAverageRating(hairstyle.userRatings);
+        const isRated = hasVisitorRated(hairstyle.id);
         
         const card = document.createElement('div');
         card.className = 'hairstyle-card';
@@ -71,7 +65,7 @@ function generateHairstyleCards(filter = 'all') {
                 <div class="hairstyle-name">${hairstyle.name}</div>
                 <div class="hairstyle-price">${hairstyle.price}</div>
                 <div class="rating-display">
-                    ${window.RatingSystem ? window.RatingSystem.generateStarRating(avgRating) : '☆☆☆☆☆'} 
+                    ${generateStarRating(avgRating)} 
                     <span class="rating-count">(${hairstyle.userRatings.length})</span>
                 </div>
                 <button class="rating-btn" data-hairstyle-id="${hairstyle.id}">
@@ -82,7 +76,6 @@ function generateHairstyleCards(filter = 'all') {
         
         // Card click event - ALWAYS enabled
         card.addEventListener('click', (e) => {
-            // Prevent click when clicking on rating button
             if (!e.target.closest('.rating-btn')) {
                 console.log('🖱️ Card clicked, opening modal for:', hairstyle.name);
                 openHairstyleModal(hairstyle);
@@ -106,7 +99,7 @@ function generateHairstyleCards(filter = 'all') {
                 ratingBtn.style.background = 'linear-gradient(135deg, #d4af37 0%, #b8941f 100%)';
                 
                 ratingBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent card click
+                    e.stopPropagation();
                     console.log('🖱️ Rating button clicked for:', hairstyle.name);
                     openHairstyleModal(hairstyle);
                 });
@@ -116,7 +109,95 @@ function generateHairstyleCards(filter = 'all') {
         hairstyleGrid.appendChild(card);
     });
     
-    console.log('✅ All cards generated successfully');
+    console.log('✅ All cards generated successfully - FAST VERSION');
+}
+
+// Simple rating calculation for immediate display
+function calculateAverageRating(ratings) {
+    if (!ratings || !Array.isArray(ratings) || ratings.length === 0) return 0;
+    const validRatings = ratings.filter(r => !isNaN(parseFloat(r)));
+    if (validRatings.length === 0) return 0;
+    
+    const sum = validRatings.reduce((total, rating) => total + parseFloat(rating), 0);
+    return (sum / validRatings.length).toFixed(1);
+}
+
+// Simple star generation for immediate display
+function generateStarRating(rating) {
+    const numericRating = parseFloat(rating) || 0;
+    const fullStars = Math.floor(numericRating);
+    const halfStar = numericRating % 1 >= 0.5;
+    let stars = '';
+    
+    for (let i = 0; i < 5; i++) {
+        if (i < fullStars) {
+            stars += '★';
+        } else if (i === fullStars && halfStar) {
+            stars += '½';
+        } else {
+            stars += '☆';
+        }
+    }
+    
+    return stars;
+}
+
+// Simple visitor rating check for immediate display
+function hasVisitorRated(hairstyleId) {
+    try {
+        // Try multiple methods to get visitor identifier
+        let visitorId = localStorage.getItem('visitorIP') || 
+                       sessionStorage.getItem('visitorSessionId') || 
+                       'unknown';
+        
+        const historyKey = `ratingHistory_${visitorId}`;
+        const storedHistory = localStorage.getItem(historyKey);
+        
+        if (storedHistory) {
+            const ratedHairstyles = JSON.parse(storedHistory);
+            return ratedHairstyles.includes(hairstyleId.toString());
+        }
+    } catch (error) {
+        console.warn('⚠️ Could not check rating history');
+    }
+    return false;
+}
+
+// Load cached ratings from localStorage for immediate display
+function loadCachedRatings() {
+    try {
+        const cachedRatings = localStorage.getItem('cachedHairstyleRatings');
+        if (cachedRatings) {
+            const ratingsData = JSON.parse(cachedRatings);
+            
+            ratingsData.forEach(cachedRating => {
+                const hairstyle = hairstyles.find(h => h.id === cachedRating.id);
+                if (hairstyle) {
+                    hairstyle.userRatings = cachedRating.ratings || [];
+                }
+            });
+            
+            console.log('✅ Loaded cached ratings for immediate display');
+            return true;
+        }
+    } catch (error) {
+        console.warn('⚠️ Could not load cached ratings');
+    }
+    return false;
+}
+
+// Initialize default ratings for new visitors
+function initializeDefaultRatings() {
+    console.log('🆕 Initializing default ratings for new visitor');
+    
+    // Set default empty ratings for all hairstyles
+    hairstyles.forEach(hairstyle => {
+        if (!hairstyle.userRatings) {
+            hairstyle.userRatings = [];
+        }
+    });
+    
+    console.log('✅ Default ratings initialized');
 }
 
 // Open hairstyle modal - FIXED FRAME VERSION
@@ -144,7 +225,7 @@ function openHairstyleModal(hairstyle) {
     }
     
     // Calculate and display average rating
-    const avgRating = window.RatingSystem ? window.RatingSystem.calculateAverageRating(hairstyle.userRatings) : 0;
+    const avgRating = calculateAverageRating(hairstyle.userRatings);
     const starsContainer = rating.querySelector('.stars');
     const ratingText = rating.querySelector('.rating-text');
     
@@ -155,7 +236,7 @@ function openHairstyleModal(hairstyle) {
     });
     
     if (starsContainer && ratingText) {
-        starsContainer.textContent = window.RatingSystem ? window.RatingSystem.generateStarRating(avgRating) : '☆☆☆☆☆';
+        starsContainer.textContent = generateStarRating(avgRating);
         ratingText.textContent = ` (${hairstyle.userRatings.length} ယောက်သတ်မှတ်ထားသည်)`;
     }
     
@@ -212,9 +293,17 @@ function openHairstyleModal(hairstyle) {
     }
 }
 
-// Main initialization
+// Refresh display with updated ratings
+function refreshDisplayWithUpdatedRatings() {
+    if (window.currentFilter && window.CoreApp && window.CoreApp.generateHairstyleCards) {
+        console.log('🔄 Refreshing display with updated ratings');
+        window.CoreApp.generateHairstyleCards(window.currentFilter);
+    }
+}
+
+// Main initialization - ULTRA FAST VERSION
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOM loaded, initializing app...');
+    console.log('🚀 DOM loaded, initializing ULTRA FAST app...');
     
     // Initialize DOM elements first
     initializeDOMElements();
@@ -225,10 +314,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
-    // Generate hairstyle cards immediately
+    // STEP 1: Initialize default ratings for ALL visitors (including new ones)
+    initializeDefaultRatings();
+    
+    // STEP 2: Try to load cached ratings (for returning visitors)
+    const hasCachedData = loadCachedRatings();
+    
+    // STEP 3: Generate hairstyle cards IMMEDIATELY with available data
     generateHairstyleCards();
     
-    // Initialize all other systems
+    // STEP 4: Initialize other systems
     if (window.ModalSystem) {
         window.ModalSystem.initializeModalSystem();
     }
@@ -245,26 +340,33 @@ document.addEventListener('DOMContentLoaded', () => {
         window.FilterSystem.generateFilterOptions();
     }
     
-    // Test if alerts work immediately
+    // STEP 5: Load fresh ratings in background (non-blocking)
     setTimeout(() => {
-        if (window.showSimpleAlert) {
-            console.log('✅ showSimpleAlert function is available');
-            window.showSimpleAlert('System loaded successfully!', 'success');
-        } else {
-            console.error('❌ showSimpleAlert function NOT available');
+        if (window.RatingSystem && window.RatingSystem.loadRatingsFromSheet) {
+            console.log('🔄 Loading fresh ratings in background...');
+            window.RatingSystem.loadRatingsFromSheet().then(success => {
+                if (success) {
+                    console.log('✅ Fresh ratings loaded, refreshing display');
+                    refreshDisplayWithUpdatedRatings();
+                }
+            });
         }
-    }, 1000);
+    }, 1500);
     
-    console.log('✅ App initialization complete');
+    console.log('✅ ULTRA FAST App initialization complete');
 });
-
-// Export core functions
-window.CoreApp = {
-    generateHairstyleCards,
-    openHairstyleModal
-};
 
 // Touch events for mobile
 document.addEventListener('touchmove', function (e) {
     // Allow scrolling
 }, { passive: true });
+
+// Export core functions
+window.CoreApp = {
+    generateHairstyleCards,
+    openHairstyleModal,
+    refreshDisplayWithUpdatedRatings,
+    calculateAverageRating,
+    generateStarRating,
+    hasVisitorRated
+};

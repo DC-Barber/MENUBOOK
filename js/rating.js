@@ -1,4 +1,4 @@
-// js/rating.js - Client-Side IP Protection with Individual Hairstyle Rating Management
+// rating.js - Client-Side IP Protection with FAST RATING SYSTEM
 // Google Apps Script Web App URL
 const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxwUXy_eATpGqqBSXF0kceDU7cr2vbDJWWVP0Sk7d0B4QE40ruJLNVccHtPNbUDlOzGSw/exec';
 
@@ -36,32 +36,46 @@ function generateStarRating(rating) {
     return stars;
 }
 
-// Get visitor IP address
+// Get visitor IP address - FAST VERSION
 async function getVisitorIP() {
     if (visitorIP) return visitorIP;
     
     try {
-        // Try multiple IP detection services
-        const responses = await Promise.race([
-            fetch('https://api.ipify.org?format=json').then(r => r.json()),
-            fetch('https://api64.ipify.org?format=json').then(r => r.json()),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 3000))
-        ]);
+        // Create session ID immediately for new visitors
+        if (!sessionStorage.getItem('visitorSessionId')) {
+            const sessionId = 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+            sessionStorage.setItem('visitorSessionId', sessionId);
+            localStorage.setItem('visitorIP', sessionId); // Fallback to localStorage
+        }
         
-        visitorIP = responses.ip || 'unknown';
-        console.log('📡 Visitor IP:', visitorIP);
+        visitorIP = sessionStorage.getItem('visitorSessionId');
+        console.log('📡 Visitor Session ID:', visitorIP);
+        
+        // Try to get real IP in background (non-blocking)
+        setTimeout(async () => {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                if (data && data.ip) {
+                    visitorIP = data.ip;
+                    localStorage.setItem('visitorIP', visitorIP);
+                    console.log('📡 Real IP detected:', visitorIP);
+                }
+            } catch (error) {
+                console.log('📡 Using session ID instead of real IP');
+            }
+        }, 1000);
+        
         return visitorIP;
     } catch (error) {
         console.warn('⚠️ Could not get IP, using session-based ID');
-        // Use session storage as fallback
-        if (!sessionStorage.getItem('visitorSessionId')) {
-            sessionStorage.setItem('visitorSessionId', 'session-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
-        }
-        visitorIP = sessionStorage.getItem('visitorSessionId');
+        const fallbackId = 'fallback-' + Date.now();
+        visitorIP = fallbackId;
         return visitorIP;
     }
 }
-// Load ratings from Google Sheets - UPDATED VERSION
+
+// Load ratings from Google Sheets - FAST VERSION with caching
 async function loadRatingsFromSheet() {
     try {
         console.log('📥 Loading ratings from Google Sheets...');
@@ -92,6 +106,9 @@ async function loadRatingsFromSheet() {
                 }
             });
             
+            // Cache the updated ratings
+            cacheRatingsToLocalStorage();
+            
             console.log('✅ All ratings loaded successfully');
             return true;
         } else {
@@ -104,6 +121,57 @@ async function loadRatingsFromSheet() {
     }
 }
 
+// Cache ratings to localStorage for immediate loading
+function cacheRatingsToLocalStorage() {
+    try {
+        const ratingsData = hairstyles.map(hairstyle => ({
+            id: hairstyle.id,
+            ratings: hairstyle.userRatings || []
+        }));
+        
+        localStorage.setItem('cachedHairstyleRatings', JSON.stringify(ratingsData));
+        localStorage.setItem('cachedRatingsTimestamp', Date.now().toString());
+        console.log('✅ Ratings cached to localStorage');
+    } catch (error) {
+        console.warn('⚠️ Could not cache ratings to localStorage');
+    }
+}
+
+// Load cached ratings from localStorage
+function loadCachedRatings() {
+    try {
+        const cachedRatings = localStorage.getItem('cachedHairstyleRatings');
+        const cachedTimestamp = localStorage.getItem('cachedRatingsTimestamp');
+        
+        // Only use cache if it's less than 1 hour old
+        if (cachedRatings && cachedTimestamp) {
+            const cacheAge = Date.now() - parseInt(cachedTimestamp);
+            const ONE_HOUR = 60 * 60 * 1000;
+            
+            if (cacheAge < ONE_HOUR) {
+                const ratingsData = JSON.parse(cachedRatings);
+                
+                ratingsData.forEach(cachedRating => {
+                    const hairstyle = hairstyles.find(h => h.id === cachedRating.id);
+                    if (hairstyle) {
+                        hairstyle.userRatings = cachedRating.ratings || [];
+                    }
+                });
+                
+                console.log('✅ Loaded cached ratings for immediate display');
+                return true;
+            } else {
+                console.log('🕐 Cache expired, loading fresh data');
+                localStorage.removeItem('cachedHairstyleRatings');
+                localStorage.removeItem('cachedRatingsTimestamp');
+            }
+        }
+    } catch (error) {
+        console.warn('⚠️ Could not load cached ratings');
+    }
+    return false;
+}
+
 // Load visitor's rating history from localStorage
 function loadVisitorRatingHistory() {
     try {
@@ -114,6 +182,9 @@ function loadVisitorRatingHistory() {
         if (storedHistory) {
             visitorRatedHairstyles = new Set(JSON.parse(storedHistory));
             console.log('📊 Loaded visitor rating history:', Array.from(visitorRatedHairstyles));
+        } else {
+            console.log('🆕 New visitor, no rating history found');
+            visitorRatedHairstyles = new Set();
         }
     } catch (error) {
         console.warn('⚠️ Could not load rating history:', error);
@@ -127,6 +198,7 @@ function saveVisitorRatingHistory() {
         const ip = visitorIP || 'unknown';
         const historyKey = `ratingHistory_${ip}`;
         localStorage.setItem(historyKey, JSON.stringify(Array.from(visitorRatedHairstyles)));
+        console.log('💾 Saved visitor rating history');
     } catch (error) {
         console.warn('⚠️ Could not save rating history:', error);
     }
@@ -137,7 +209,7 @@ function hasVisitorRated(hairstyleId) {
     return visitorRatedHairstyles.has(hairstyleId.toString());
 }
 
-// Submit rating to Google Sheets - UPDATED VERSION
+// Submit rating to Google Sheets - FAST VERSION
 async function submitRatingToSheet(hairstyleId, ratingValue) {
     try {
         console.log(`📤 Submitting rating: Hairstyle ${hairstyleId}, Rating ${ratingValue}`);
@@ -166,6 +238,9 @@ async function submitRatingToSheet(hairstyleId, ratingValue) {
                 }
                 hairstyle.userRatings.push(parseFloat(ratingValue));
                 console.log(`✅ Updated local ratings for hairstyle ${hairstyleId}:`, hairstyle.userRatings);
+                
+                // Update cache
+                cacheRatingsToLocalStorage();
             }
             
             return { 
@@ -291,11 +366,11 @@ function updateAllHairstyleCardsRatingStatus() {
     const hairstyleCards = document.querySelectorAll('.hairstyle-card');
     
     hairstyleCards.forEach(card => {
-        const hairstyleId = getHairstyleIdFromCard(card);
         const ratingBtn = card.querySelector('.rating-btn');
+        const hairstyleId = ratingBtn ? ratingBtn.getAttribute('data-hairstyle-id') : null;
         
         if (hairstyleId && ratingBtn) {
-            if (hasVisitorRated(hairstyleId)) {
+            if (hasVisitorRated(parseInt(hairstyleId))) {
                 // Disable only the rating button in card
                 ratingBtn.disabled = true;
                 ratingBtn.innerHTML = '✅ Rated';
@@ -314,20 +389,7 @@ function updateAllHairstyleCardsRatingStatus() {
     });
 }
 
-// Get hairstyle ID from card element
-function getHairstyleIdFromCard(card) {
-    const hairstyleName = card.querySelector('.hairstyle-name').textContent;
-    const hairstyle = hairstyles.find(h => h.name === hairstyleName);
-    return hairstyle ? hairstyle.id : null;
-}
-// Get hairstyle ID from card element
-function getHairstyleIdFromCard(card) {
-    const hairstyleName = card.querySelector('.hairstyle-name').textContent;
-    const hairstyle = hairstyles.find(h => h.name === hairstyleName);
-    return hairstyle ? hairstyle.id : null;
-}
-
-// Initialize rating system - FIXED VERSION
+// Initialize rating system - FAST VERSION
 function initializeRatingSystem() {
     const stars = document.querySelectorAll('.user-rating .star');
     const submitBtn = document.getElementById('submitRating');
@@ -345,7 +407,7 @@ function initializeRatingSystem() {
     // Reset stars to initial state
     resetStarsSelection();
     
-    // Star click events - FIXED
+    // Star click events
     stars.forEach(star => {
         star.addEventListener('click', function() {
             console.log('⭐ Star clicked, current hairstyle:', window.currentHairstyle);
@@ -380,7 +442,7 @@ function initializeRatingSystem() {
         });
     });
     
-    // Submit button click event - FIXED
+    // Submit button click event
     submitBtn.addEventListener('click', async function() {
         console.log('📝 Submit button clicked, selected rating:', selectedRating);
         
@@ -427,8 +489,8 @@ function initializeRatingSystem() {
                 updateRatingDisplay(window.currentHairstyle);
                 
                 // Update grid to refresh all cards
-                if (window.CoreApp && window.CoreApp.generateHairstyleCards && window.currentFilter) {
-                    window.CoreApp.generateHairstyleCards(window.currentFilter);
+                if (window.CoreApp && window.CoreApp.refreshDisplayWithUpdatedRatings) {
+                    window.CoreApp.refreshDisplayWithUpdatedRatings();
                 }
                 
                 // Reset selection
@@ -449,6 +511,7 @@ function initializeRatingSystem() {
     
     console.log('✅ Rating system initialized successfully');
 }
+
 // Monitor modal openings to update rating status for specific hairstyle
 function monitorModalOpenings() {
     const originalOpenModal = window.openHairstyleModal;
@@ -600,55 +663,37 @@ function addStyles() {
                 cursor: not-allowed;
                 transform: none;
             }
-
-            /* Rated hairstyle card styles */
-            .hairstyle-card.rated {
-                position: relative;
-            }
-
-            .hairstyle-card.rated::after {
-                content: '✅ Rated';
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                background: rgba(0, 184, 148, 0.9);
-                color: white;
-                padding: 4px 8px;
-                border-radius: 12px;
-                font-size: 12px;
-                font-weight: bold;
-                z-index: 2;
-            }
         `;
         document.head.appendChild(style);
         console.log('✅ Rating styles added');
     }
 }
 
-// Initialize
+// Initialize - ULTRA FAST VERSION
 async function initializeRatings() {
-    console.log('🎬 Starting rating system initialization...');
+    console.log('🎬 Starting ULTRA FAST rating system initialization...');
     
     // Add styles first
     addStyles();
     
-    // Get visitor IP and load history
-    await getVisitorIP();
-    loadVisitorRatingHistory();
+    // Get visitor IP and load history (non-blocking)
+    setTimeout(async () => {
+        await getVisitorIP();
+        loadVisitorRatingHistory();
+    }, 100);
     
     // Monitor modal openings
     monitorModalOpenings();
-    
-    // Load ratings
-    await loadRatingsFromSheet();
     
     // Initialize event listeners
     initializeRatingSystem();
     
     // Update all hairstyle cards based on rating status
-    updateAllHairstyleCardsRatingStatus();
+    setTimeout(() => {
+        updateAllHairstyleCardsRatingStatus();
+    }, 500);
     
-    console.log('✅ Rating system initialized with individual hairstyle management');
+    console.log('✅ ULTRA FAST Rating system initialized');
 }
 
 // Export functions
@@ -662,7 +707,9 @@ window.RatingSystem = {
     initializeRatings,
     updateRatingDisplay,
     updateAllHairstyleCardsRatingStatus,
-    updateUIBasedOnRatingStatus
+    updateUIBasedOnRatingStatus,
+    loadCachedRatings,
+    cacheRatingsToLocalStorage
 };
 
 // Start when ready
