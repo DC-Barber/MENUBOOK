@@ -288,7 +288,7 @@ function addCommentSectionToModal() {
                 <div class="form-group">
                     <textarea id="commentText" placeholder="သင့်မှတ်ချက်ကို ဤနေရာတွင် ရေးသားပါ..." class="form-textarea" rows="2"></textarea>
                     <div class="char-count">
-                        <span id="charCount">0</span>/500
+                        <span id="charCount">0</span>/30
                     </div>
                 </div>
                 <button id="submitComment" class="btn comment-submit-btn">
@@ -332,7 +332,7 @@ function initializeCommentEvents() {
             if (charCount) {
                 charCount.textContent = commentText.value.length;
                 
-                if (commentText.value.length > 500) {
+                if (commentText.value.length > 30) {
                     charCount.style.color = '#ef4444';
                 } else {
                     charCount.style.color = '#666';
@@ -370,7 +370,7 @@ async function handleCommentSubmit() {
         return;
     }
     
-    if (comment.length > 500) {
+    if (comment.length > 30) {
         showCommentAlert('❌ မှတ်ချက်သည် ရှည်လွန်းနေပါသည်။ (အများဆုံး ၅၀၀ လုံး)', 'error');
         return;
     }
