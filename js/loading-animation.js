@@ -83,7 +83,7 @@ function createLoadingOverlay() {
     
     // Create logo image
     const logo = document.createElement('img');
-    logo.src = 'logo.jpg';
+    logo.src = 'logo.png';
     logo.alt = 'Diamond Crown Barber';
     logo.style.cssText = `
         width: 80px;
