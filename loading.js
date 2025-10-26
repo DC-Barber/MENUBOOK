@@ -1,4 +1,4 @@
-// loading.js - Fast loading with background image preloading
+// loading.js - Smart loading with fixed display time and background preloading
 
 // Configuration
 const LOADING_CONFIG = {
@@ -10,23 +10,25 @@ const LOADING_CONFIG = {
     // Content
     typingTexts: [
         "စိန်သရဖူ_ဆံသ",
-        "ဆံပင်ပုံစံများ ပြင်ဆင်နေသည်...",
-        "ကျေးဇူးပြု၍ စောင့်ပေးပါ..."
+        "ဆံပင်ပုံစံများ ြပင်ဆင်‌ေ နသည်...",
+        "please_wait...",
+        "Almost ready..."
     ],
     
-    // Timing - No minimum time, complete when ready
-    minDisplayTime: 8000,
-    typingSpeed: 80,
-    textPause: 600,
+    // Timing - Fixed display time 10-15 seconds
+    minDisplayTime: 10000, // 10 seconds minimum
+    maxDisplayTime: 15000, // 15 seconds maximum
+    typingSpeed: 60,
+    textPause: 800,
     
     // Storage keys
     cacheKey: 'hairstyle_data_cached',
     animationShownKey: 'loading_animation_shown',
     
-    // Performance settings - More aggressive for speed
-    batchSize: 15,
-    parallelLoads: 8,
-    lowPriorityDelay: 50
+    // Performance settings - Maximum speed for background loading
+    batchSize: 20,
+    parallelLoads: 10,
+    lowPriorityDelay: 30
 };
 
 // DOM Elements
@@ -36,7 +38,8 @@ let currentProgress = 0;
 let actualProgress = 0;
 let totalImages = 0;
 let loadedImages = 0;
-let criticalImagesLoaded = false;
+let startTime = 0;
+let allImagesPreloaded = false;
 
 // Initialize loading animation
 function initializeLoadingAnimation() {
@@ -46,7 +49,8 @@ function initializeLoadingAnimation() {
         return;
     }
     
-    console.log('🚀 Starting fast loading animation');
+    console.log('🚀 Starting smart loading animation (10-15s display)');
+    startTime = Date.now();
     createLoadingOverlay();
     startLoadingSequence();
 }
@@ -70,7 +74,7 @@ function createLoadingOverlay() {
         width: 100%;
         height: 100%;
         background: rgba(0, 0, 0, 0.95);
-        backdrop-filter: blur(5px);
+        backdrop-filter: blur(8px);
         z-index: 9999;
         display: flex;
         flex-direction: column;
@@ -86,7 +90,7 @@ function createLoadingOverlay() {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 20px;
+        gap: 25px;
     `;
     
     // Create logo image
@@ -94,32 +98,34 @@ function createLoadingOverlay() {
     logo.src = 'images/logo.jpg';
     logo.alt = 'Diamond Crown Barber';
     logo.style.cssText = `
-        width: 70px;
-        height: 70px;
+        width: 80px;
+        height: 80px;
         object-fit: contain;
-        animation: float 1.5s ease-in-out infinite;
+        animation: float 2s ease-in-out infinite;
         border-radius: 50%;
         border: 2px solid #d4af37;
+        box-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
     `;
     
     // Create progress bar container
     const progressContainer = document.createElement('div');
     progressContainer.style.cssText = `
-        width: 250px;
+        width: 280px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
     `;
     
     // Create progress bar
     progressBar = document.createElement('div');
     progressBar.style.cssText = `
         width: 100%;
-        height: 4px;
+        height: 6px;
         background: rgba(212, 175, 55, 0.2);
-        border-radius: 2px;
+        border-radius: 3px;
         overflow: hidden;
+        border: 1px solid rgba(212, 175, 55, 0.3);
     `;
     
     const progressFill = document.createElement('div');
@@ -127,23 +133,40 @@ function createLoadingOverlay() {
     progressFill.style.cssText = `
         width: 0%;
         height: 100%;
-        background: linear-gradient(90deg, #d4af37, #f4d03f);
-        border-radius: 2px;
-        transition: width 0.2s ease;
+        background: linear-gradient(90deg, #d4af37, #f4d03f, #d4af37);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+        box-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
+        position: relative;
+        overflow: hidden;
     `;
     
+    // Add shimmer effect
+    const progressShimmer = document.createElement('div');
+    progressShimmer.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        animation: shimmer 2s infinite;
+    `;
+    
+    progressFill.appendChild(progressShimmer);
     progressBar.appendChild(progressFill);
     
     // Create progress text
     progressText = document.createElement('div');
     progressText.id = 'progress-text';
     progressText.style.cssText = `
-        font-size: 0.9rem;
+        font-size: 1rem;
         color: #d4af37;
         text-align: center;
         font-weight: bold;
+        text-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
     `;
-    progressText.textContent = 'Loading images...';
+    progressText.textContent = 'ဆံပင်ပုံစံများ ဖွင့်နေသည်...';
     
     progressContainer.appendChild(progressBar);
     progressContainer.appendChild(progressText);
@@ -152,12 +175,25 @@ function createLoadingOverlay() {
     typingContainer = document.createElement('div');
     typingContainer.id = 'typing-container';
     typingContainer.style.cssText = `
-        height: 24px;
-        font-size: 1rem;
+        height: 28px;
+        font-size: 1.1rem;
         color: #d4af37;
         text-align: center;
         font-weight: bold;
+        text-shadow: 0 0 8px rgba(212, 175, 55, 0.7);
+        letter-spacing: 0.5px;
     `;
+    
+    // Create image counter
+    const imageCounter = document.createElement('div');
+    imageCounter.id = 'image-counter';
+    imageCounter.style.cssText = `
+        font-size: 0.8rem;
+        color: #888;
+        text-align: center;
+        margin-top: 5px;
+    `;
+    imageCounter.textContent = '188 images loading in background...';
     
     // Assemble the loading screen
     loadingContainer.appendChild(logo);
@@ -170,6 +206,7 @@ function createLoadingOverlay() {
         loadingContainer.appendChild(typingContainer);
     }
     
+    loadingContainer.appendChild(imageCounter);
     loadingOverlay.appendChild(loadingContainer);
     document.body.appendChild(loadingOverlay);
     
@@ -186,11 +223,21 @@ function addFloatingAnimationStyles() {
     style.textContent = `
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        @keyframes goldGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(212, 175, 55, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(212, 175, 55, 0.8); }
         }
         
         #loading-overlay {
-            animation: fadeIn 0.2s ease;
+            animation: fadeIn 0.5s ease;
         }
         
         @keyframes fadeIn {
@@ -205,11 +252,11 @@ function addFloatingAnimationStyles() {
         
         .typing-cursor {
             display: inline-block;
-            width: 2px;
-            height: 1em;
+            width: 3px;
+            height: 1.2em;
             background: #d4af37;
             margin-left: 2px;
-            animation: blink 0.6s infinite;
+            animation: blink 0.7s infinite;
             vertical-align: middle;
         }
         
@@ -223,63 +270,60 @@ function addFloatingAnimationStyles() {
 
 // Start the loading sequence
 function startLoadingSequence() {
-    console.log('🚀 Starting aggressive image preloading...');
+    console.log('🚀 Starting background image preloading...');
     
-    // Start ultra-fast loading strategy
-    startUltraFastLoading();
+    // Start ultra-fast background loading IMMEDIATELY
+    startBackgroundPreloading();
     
     // Start typing effect
     if (LOADING_CONFIG.typingEffect) {
         startTypingEffect();
     }
     
-    // Monitor completion
+    // Start progress simulation (for visual feedback during fixed display time)
+    startProgressSimulation();
+    
+    // Monitor completion with fixed timing
     const completionCheck = setInterval(() => {
-        if (isDataReady()) {
+        const currentTime = Date.now();
+        const elapsedTime = currentTime - startTime;
+        
+        // Check if we should complete based on time AND data readiness
+        const shouldComplete = (elapsedTime >= LOADING_CONFIG.minDisplayTime && allImagesPreloaded) || 
+                              (elapsedTime >= LOADING_CONFIG.maxDisplayTime);
+        
+        if (shouldComplete) {
             clearInterval(completionCheck);
             if (progressInterval) {
                 clearInterval(progressInterval);
             }
+            console.log(`✅ Completed after ${elapsedTime}ms`);
             completeLoading();
         }
-    }, 50);
-    
-    // Fallback timeout - very short since we want speed
-    setTimeout(() => {
-        clearInterval(completionCheck);
-        if (progressInterval) {
-            clearInterval(progressInterval);
-        }
-        if (loadingOverlay && loadingOverlay.parentNode) {
-            console.log('⚡ Force completing loading for speed');
-            completeLoading();
-        }
-    }, 3000); // Only 3 seconds max
+    }, 100);
 }
 
-// Ultra-fast loading strategy
-function startUltraFastLoading() {
-    if (!LOADING_CONFIG.progressBar) return;
-    
+// Start ultra-fast background preloading
+function startBackgroundPreloading() {
     // Get all image URLs
     const allImages = getAllImageUrls();
     totalImages = allImages.length;
     
-    console.log(`📦 Total images to load: ${totalImages}`);
+    console.log(`📦 Preloading ${totalImages} images in background...`);
     
     if (totalImages === 0) {
-        actualProgress = 100;
-        criticalImagesLoaded = true;
+        allImagesPreloaded = true;
         return;
     }
     
-    // Load ALL images in parallel with aggressive settings
+    // Start aggressive background loading
     loadAllImagesAggressive(allImages);
     
-    // Fast progress monitoring
-    progressInterval = setInterval(() => {
-        updateProgressBar();
-    }, 50);
+    // Update image counter
+    const imageCounter = document.getElementById('image-counter');
+    if (imageCounter) {
+        imageCounter.textContent = `Preloading ${totalImages} images...`;
+    }
 }
 
 // Get all image URLs
@@ -310,10 +354,13 @@ function getAllImageUrls() {
     return Array.from(urls);
 }
 
-// Load all images aggressively in parallel
+// Load all images aggressively in background
 function loadAllImagesAggressive(imageUrls) {
     const batchSize = LOADING_CONFIG.batchSize;
     const parallelLoads = LOADING_CONFIG.parallelLoads;
+    
+    let completedBatches = 0;
+    const totalBatches = Math.ceil(imageUrls.length / batchSize);
     
     // Load in large batches for maximum speed
     for (let i = 0; i < imageUrls.length; i += batchSize) {
@@ -324,28 +371,46 @@ function loadAllImagesAggressive(imageUrls) {
             const parallelBatch = batch.slice(j, j + parallelLoads);
             
             // Load all images in this parallel batch
-            parallelBatch.forEach(url => {
-                preloadImageFast(url).then(() => {
+            const batchPromises = parallelBatch.map(url => 
+                preloadImageUltraFast(url).then(() => {
                     loadedImages++;
-                    // Update progress immediately
+                    
+                    // Update actual progress for real loading
                     actualProgress = Math.min(99, Math.round((loadedImages / totalImages) * 100));
-                });
+                    
+                    // Update image counter
+                    const imageCounter = document.getElementById('image-counter');
+                    if (imageCounter) {
+                        imageCounter.textContent = `${loadedImages}/${totalImages} images loaded...`;
+                    }
+                    
+                    // Check if all images are loaded
+                    if (loadedImages >= totalImages) {
+                        allImagesPreloaded = true;
+                        console.log('✅ All images preloaded in background!');
+                    }
+                })
+            );
+            
+            // Don't wait for batches - fire and forget for maximum speed
+            Promise.allSettled(batchPromises).then(() => {
+                completedBatches++;
+                console.log(`✅ Batch ${completedBatches}/${totalBatches} completed`);
             });
         }
     }
 }
 
-// Ultra-fast image preloading
-function preloadImageFast(src) {
+// Ultra-fast image preloading with no delays
+function preloadImageUltraFast(src) {
     return new Promise((resolve) => {
         const img = new Image();
         
-        // Very short timeout for speed
+        // Very short timeout for maximum speed
         const timeout = setTimeout(() => {
-            console.log(`⚡ Fast timeout: ${src}`);
-            loadedImages++; // Count timeout as loaded to keep progress moving
+            console.log(`⚡ Fast load: ${src}`);
             resolve();
-        }, 2000); // Only 2 seconds per image
+        }, 3000); // 3 seconds max per image
         
         img.onload = () => {
             clearTimeout(timeout);
@@ -354,44 +419,60 @@ function preloadImageFast(src) {
         
         img.onerror = () => {
             clearTimeout(timeout);
-            console.log(`⚠️ Fast failed: ${src}`);
-            loadedImages++; // Count errors as loaded to keep progress moving
-            resolve();
+            console.log(`⚠️ Failed: ${src}`);
+            resolve(); // Continue even if some fail
         };
         
-        // Start loading immediately
-        img.src = src;
-        
-        // For GitHub hosting, add cache-busting if needed
+        // Start loading immediately with cache busting for GitHub
         if (src.includes('github.io') || src.includes('githubusercontent')) {
             img.src = src + '?t=' + Date.now();
+        } else {
+            img.src = src;
         }
     });
 }
 
-// Update progress bar
-function updateProgressBar() {
-    if (currentProgress < actualProgress) {
-        currentProgress = Math.min(currentProgress + 3, actualProgress); // Very fast progression
+// Progress simulation for visual feedback during fixed display time
+function startProgressSimulation() {
+    let simulatedProgress = 0;
+    
+    progressInterval = setInterval(() => {
+        const elapsedTime = Date.now() - startTime;
+        const timeProgress = Math.min(95, (elapsedTime / LOADING_CONFIG.maxDisplayTime) * 100);
         
-        const progressFill = document.getElementById('progress-fill');
-        if (progressFill) {
-            progressFill.style.width = `${currentProgress}%`;
-        }
+        // Combine real progress with time-based progress for smooth visual
+        const targetProgress = Math.max(actualProgress, timeProgress, simulatedProgress);
         
-        if (progressText) {
-            progressText.textContent = `${Math.round(currentProgress)}%`;
+        if (currentProgress < targetProgress) {
+            currentProgress = Math.min(currentProgress + 1.5, targetProgress);
             
-            // Update text based on progress
-            if (currentProgress < 30) {
-                progressText.textContent = 'Loading images...';
-            } else if (currentProgress < 70) {
-                progressText.textContent = `Loading... ${Math.round(currentProgress)}%`;
-            } else {
-                progressText.textContent = `Almost ready... ${Math.round(currentProgress)}%`;
+            const progressFill = document.getElementById('progress-fill');
+            if (progressFill) {
+                progressFill.style.width = `${currentProgress}%`;
+            }
+            
+            if (progressText) {
+                progressText.textContent = `${Math.round(currentProgress)}%`;
+                
+                // Update status text based on progress
+                if (currentProgress < 40) {
+                    progressText.textContent = 'ဆံပင်ပုံစံများ ဖွင့်နေသည်...';
+                } else if (currentProgress < 70) {
+                    progressText.textContent = `ဆက်လက်ဖွင့်နေဆဲ... ${Math.round(currentProgress)}%`;
+                } else if (currentProgress < 90) {
+                    progressText.textContent = `မကြာမီပြီးဆုံးမည်... ${Math.round(currentProgress)}%`;
+                } else {
+                    progressText.textContent = `ပြီးဆုံးခါနီး... ${Math.round(currentProgress)}%`;
+                }
             }
         }
-    }
+        
+        // Gradually increase simulated progress to ensure we reach 100%
+        if (simulatedProgress < 95 && elapsedTime > LOADING_CONFIG.minDisplayTime * 0.7) {
+            simulatedProgress += 0.3;
+        }
+        
+    }, 100);
 }
 
 // Start typing effect
@@ -410,7 +491,7 @@ function startTypingEffect() {
             if (currentCharIndex <= 0) {
                 isDeleting = false;
                 currentTextIndex = (currentTextIndex + 1) % LOADING_CONFIG.typingTexts.length;
-                setTimeout(type, 300);
+                setTimeout(type, 500);
                 return;
             }
         } else {
@@ -432,51 +513,44 @@ function startTypingEffect() {
     type();
 }
 
-// Check if data is ready - Very lenient for speed
-function isDataReady() {
-    try {
-        // Basic checks only
-        if (typeof hairstyles === 'undefined') {
-            return false;
-        }
-        
-        // Consider ready when most images are loaded
-        if (totalImages > 0 && loadedImages >= totalImages * 0.8) {
-            return true;
-        }
-        
-        // Or if critical progress reached
-        if (currentProgress >= 85) {
-            return true;
-        }
-        
-        return false;
-        
-    } catch (error) {
-        console.error('Error checking data readiness:', error);
-        return true; // Always return true on error to keep things moving
-    }
-}
-
-// Complete loading immediately
+// Complete loading
 function completeLoading() {
-    console.log('⚡ Loading complete - showing content immediately');
+    console.log('🎉 Loading complete with background preloading');
     
-    // Mark as cached
+    // Final progress update to 100%
+    currentProgress = 100;
+    actualProgress = 100;
+    
+    const progressFill = document.getElementById('progress-fill');
+    if (progressFill) {
+        progressFill.style.width = '100%';
+    }
+    
+    if (progressText) {
+        progressText.textContent = '100% - Ready!';
+    }
+    
+    if (typingContainer) {
+        typingContainer.innerHTML = 'Welcome to Diamond Crown!<span class="typing-cursor"></span>';
+    }
+    
+    // Mark as cached for future visits
     localStorage.setItem(LOADING_CONFIG.cacheKey, 'true');
     sessionStorage.setItem(LOADING_CONFIG.animationShownKey, 'true');
     
-    // Hide loading immediately with fast animation
-    if (loadingOverlay) {
-        loadingOverlay.style.animation = 'fadeOut 0.3s ease forwards';
-        
-        setTimeout(() => {
-            if (loadingOverlay && loadingOverlay.parentNode) {
-                loadingOverlay.parentNode.removeChild(loadingOverlay);
-                console.log('🎉 Fast loading completed');
-            }
-        }, 300);
-    }
+    // Show completion for a moment before hiding
+    setTimeout(() => {
+        if (loadingOverlay) {
+            loadingOverlay.style.animation = 'fadeOut 0.8s ease forwards';
+            
+            setTimeout(() => {
+                if (loadingOverlay && loadingOverlay.parentNode) {
+                    loadingOverlay.parentNode.removeChild(loadingOverlay);
+                    console.log('✨ Loading animation hidden, website ready with preloaded images');
+                }
+            }, 800);
+        }
+    }, 800);
 }
 
 // Manual control functions
@@ -494,23 +568,25 @@ window.LoadingAnimation = {
         return {
             imagesLoaded: loadedImages,
             totalImages: totalImages,
-            progress: currentProgress
+            progress: currentProgress,
+            allPreloaded: allImagesPreloaded,
+            displayTime: Date.now() - startTime
         };
     }
 };
 
-// Initialize immediately - don't wait for DOMContentLoaded
+// Initialize immediately
 initializeLoadingAnimation();
 
-// Also start on window load as backup
+// Backup completion on window load
 window.addEventListener('load', function() {
-    console.log('🏁 Window loaded - final speed check');
+    console.log('🏁 Window fully loaded - background preloading continues');
     
-    // Force complete if still loading after window load
+    // Ensure completion by max time even if images aren't all loaded
     setTimeout(() => {
-        if (loadingOverlay && loadingOverlay.parentNode) {
-            console.log('⚡ Window loaded - forcing completion');
-            completeLoading();
+        if (loadingOverlay && loadingOverlay.parentNode && !allImagesPreloaded) {
+            console.log('⏰ Max time reached - completing with available images');
+            allImagesPreloaded = true; // Force completion
         }
-    }, 500);
+    }, LOADING_CONFIG.maxDisplayTime + 1000);
 });
