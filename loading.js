@@ -1,4 +1,4 @@
-// loading.js - Optimized loading animation for GitHub hosting
+// loading.js - Fast loading with background image preloading
 
 // Configuration
 const LOADING_CONFIG = {
@@ -10,24 +10,23 @@ const LOADING_CONFIG = {
     // Content
     typingTexts: [
         "စိန်သရဖူ_ဆံသ",
-        "ဆံပင်ပုံစံများ ဖွင့်နေသည်...",
-        "ကျေးဇူးပြု၍ စောင့်ပေးပါ...",
-        "Almost ready..."
+        "ဆံပင်ပုံစံများ ပြင်ဆင်နေသည်...",
+        "ကျေးဇူးပြု၍ စောင့်ပေးပါ..."
     ],
     
-    // Timing
-    minDisplayTime: 3000, // Reduced minimum time
-    typingSpeed: 60,      // Faster typing
-    textPause: 800,       // Shorter pause
+    // Timing - No minimum time, complete when ready
+    minDisplayTime: 8000,
+    typingSpeed: 80,
+    textPause: 600,
     
     // Storage keys
     cacheKey: 'hairstyle_data_cached',
     animationShownKey: 'loading_animation_shown',
     
-    // Performance settings
-    batchSize: 10,        // Load images in batches
-    parallelLoads: 5,     // Number of parallel image loads
-    lowPriorityDelay: 100 // Delay for low priority images
+    // Performance settings - More aggressive for speed
+    batchSize: 15,
+    parallelLoads: 8,
+    lowPriorityDelay: 50
 };
 
 // DOM Elements
@@ -47,22 +46,19 @@ function initializeLoadingAnimation() {
         return;
     }
     
-    console.log('🔄 Starting optimized loading animation');
+    console.log('🚀 Starting fast loading animation');
     createLoadingOverlay();
     startLoadingSequence();
 }
 
 // Check if we should skip loading animation
 function shouldSkipLoading() {
-    // Check if data is already cached in localStorage
     const isDataCached = localStorage.getItem(LOADING_CONFIG.cacheKey) === 'true';
     const animationShown = sessionStorage.getItem(LOADING_CONFIG.animationShownKey) === 'true';
-    
-    // Skip if data is cached AND animation was shown in this session
     return isDataCached && animationShown;
 }
 
-// Create loading overlay (same as before, but with performance messaging)
+// Create loading overlay
 function createLoadingOverlay() {
     // Create overlay
     loadingOverlay = document.createElement('div');
@@ -73,8 +69,8 @@ function createLoadingOverlay() {
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        backdrop-filter: blur(10px);
+        background: rgba(0, 0, 0, 0.95);
+        backdrop-filter: blur(5px);
         z-index: 9999;
         display: flex;
         flex-direction: column;
@@ -90,7 +86,7 @@ function createLoadingOverlay() {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 25px;
+        gap: 20px;
     `;
     
     // Create logo image
@@ -98,10 +94,10 @@ function createLoadingOverlay() {
     logo.src = 'images/logo.jpg';
     logo.alt = 'Diamond Crown Barber';
     logo.style.cssText = `
-        width: 80px;
-        height: 80px;
+        width: 70px;
+        height: 70px;
         object-fit: contain;
-        animation: float 2s ease-in-out infinite, goldGlow 1.5s ease-in-out infinite;
+        animation: float 1.5s ease-in-out infinite;
         border-radius: 50%;
         border: 2px solid #d4af37;
     `;
@@ -109,22 +105,21 @@ function createLoadingOverlay() {
     // Create progress bar container
     const progressContainer = document.createElement('div');
     progressContainer.style.cssText = `
-        width: 280px;
+        width: 250px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
     `;
     
     // Create progress bar
     progressBar = document.createElement('div');
     progressBar.style.cssText = `
         width: 100%;
-        height: 6px;
+        height: 4px;
         background: rgba(212, 175, 55, 0.2);
-        border-radius: 3px;
+        border-radius: 2px;
         overflow: hidden;
-        border: 1px solid rgba(212, 175, 55, 0.3);
     `;
     
     const progressFill = document.createElement('div');
@@ -132,40 +127,23 @@ function createLoadingOverlay() {
     progressFill.style.cssText = `
         width: 0%;
         height: 100%;
-        background: linear-gradient(90deg, #d4af37, #f4d03f, #d4af37);
-        border-radius: 3px;
-        transition: width 0.3s ease;
-        box-shadow: 0 0 15px rgba(212, 175, 55, 0.6);
-        position: relative;
-        overflow: hidden;
+        background: linear-gradient(90deg, #d4af37, #f4d03f);
+        border-radius: 2px;
+        transition: width 0.2s ease;
     `;
     
-    // Add shimmer effect
-    const progressShimmer = document.createElement('div');
-    progressShimmer.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
-        animation: shimmer 1.5s infinite;
-    `;
-    
-    progressFill.appendChild(progressShimmer);
     progressBar.appendChild(progressFill);
     
     // Create progress text
     progressText = document.createElement('div');
     progressText.id = 'progress-text';
     progressText.style.cssText = `
-        font-size: 1rem;
+        font-size: 0.9rem;
         color: #d4af37;
         text-align: center;
         font-weight: bold;
-        text-shadow: 0 0 10px rgba(212, 175, 55, 0.8);
     `;
-    progressText.textContent = 'Preparing...';
+    progressText.textContent = 'Loading images...';
     
     progressContainer.appendChild(progressBar);
     progressContainer.appendChild(progressText);
@@ -174,25 +152,12 @@ function createLoadingOverlay() {
     typingContainer = document.createElement('div');
     typingContainer.id = 'typing-container';
     typingContainer.style.cssText = `
-        height: 28px;
-        font-size: 1.1rem;
+        height: 24px;
+        font-size: 1rem;
         color: #d4af37;
         text-align: center;
         font-weight: bold;
-        text-shadow: 0 0 8px rgba(212, 175, 55, 0.7);
-        letter-spacing: 0.5px;
     `;
-    
-    // Create performance note
-    const performanceNote = document.createElement('div');
-    performanceNote.style.cssText = `
-        font-size: 0.8rem;
-        color: #888;
-        text-align: center;
-        margin-top: 10px;
-        font-style: italic;
-    `;
-    performanceNote.textContent = '188 images (8MB) loading...';
     
     // Assemble the loading screen
     loadingContainer.appendChild(logo);
@@ -205,7 +170,6 @@ function createLoadingOverlay() {
         loadingContainer.appendChild(typingContainer);
     }
     
-    loadingContainer.appendChild(performanceNote);
     loadingOverlay.appendChild(loadingContainer);
     document.body.appendChild(loadingOverlay);
     
@@ -215,28 +179,18 @@ function createLoadingOverlay() {
     }
 }
 
-// Add CSS for floating animation (optimized)
+// Add CSS for floating animation
 function addFloatingAnimationStyles() {
     const style = document.createElement('style');
     style.id = 'loading-animation-styles';
     style.textContent = `
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        @keyframes goldGlow {
-            0%, 100% { box-shadow: 0 0 15px rgba(212, 175, 55, 0.5); }
-            50% { box-shadow: 0 0 25px rgba(212, 175, 55, 0.8); }
-        }
-        
-        @keyframes shimmer {
-            0% { left: -100%; }
-            100% { left: 100%; }
+            50% { transform: translateY(-8px); }
         }
         
         #loading-overlay {
-            animation: fadeIn 0.3s ease;
+            animation: fadeIn 0.2s ease;
         }
         
         @keyframes fadeIn {
@@ -251,11 +205,11 @@ function addFloatingAnimationStyles() {
         
         .typing-cursor {
             display: inline-block;
-            width: 3px;
-            height: 1.2em;
+            width: 2px;
+            height: 1em;
             background: #d4af37;
             margin-left: 2px;
-            animation: blink 0.7s infinite;
+            animation: blink 0.6s infinite;
             vertical-align: middle;
         }
         
@@ -269,63 +223,49 @@ function addFloatingAnimationStyles() {
 
 // Start the loading sequence
 function startLoadingSequence() {
-    const startTime = Date.now();
+    console.log('🚀 Starting aggressive image preloading...');
     
-    // Start progressive loading strategy
-    startProgressiveLoading();
+    // Start ultra-fast loading strategy
+    startUltraFastLoading();
     
     // Start typing effect
     if (LOADING_CONFIG.typingEffect) {
         startTypingEffect();
     }
     
-    // Update progress text
-    if (progressText) {
-        progressText.textContent = 'Loading critical images...';
-    }
-    
-    // Check when to hide loading
-    const checkLoadingComplete = setInterval(() => {
-        const currentTime = Date.now();
-        const elapsedTime = currentTime - startTime;
-        
-        // More lenient completion criteria for GitHub hosting
-        const canComplete = elapsedTime >= LOADING_CONFIG.minDisplayTime && 
-                           (criticalImagesLoaded || isDataReady());
-        
-        if (canComplete) {
-            clearInterval(checkLoadingComplete);
+    // Monitor completion
+    const completionCheck = setInterval(() => {
+        if (isDataReady()) {
+            clearInterval(completionCheck);
             if (progressInterval) {
                 clearInterval(progressInterval);
             }
             completeLoading();
         }
-    }, 100);
+    }, 50);
     
-    // More generous fallback timeout
+    // Fallback timeout - very short since we want speed
     setTimeout(() => {
-        clearInterval(checkLoadingComplete);
+        clearInterval(completionCheck);
         if (progressInterval) {
             clearInterval(progressInterval);
         }
         if (loadingOverlay && loadingOverlay.parentNode) {
-            console.log('⏰ GitHub hosting timeout - completing anyway');
+            console.log('⚡ Force completing loading for speed');
             completeLoading();
         }
-    }, 10000); // 10 seconds max for GitHub
+    }, 3000); // Only 3 seconds max
 }
 
-// Progressive loading strategy for GitHub
-function startProgressiveLoading() {
+// Ultra-fast loading strategy
+function startUltraFastLoading() {
     if (!LOADING_CONFIG.progressBar) return;
     
-    console.log('🚀 Starting progressive loading for GitHub...');
+    // Get all image URLs
+    const allImages = getAllImageUrls();
+    totalImages = allImages.length;
     
-    // Get all image URLs with priorities
-    const { criticalImages, normalImages } = categorizeImagesByPriority();
-    totalImages = criticalImages.length + normalImages.length;
-    
-    console.log(`📊 Images: ${criticalImages.length} critical + ${normalImages.length} normal = ${totalImages} total`);
+    console.log(`📦 Total images to load: ${totalImages}`);
     
     if (totalImages === 0) {
         actualProgress = 100;
@@ -333,134 +273,79 @@ function startProgressiveLoading() {
         return;
     }
     
-    // Phase 1: Load critical images first
-    loadImageBatch(criticalImages, 0, 70, 'critical').then(() => {
-        console.log('✅ Critical images loaded');
-        criticalImagesLoaded = true;
-        
-        // Update progress text
-        if (progressText) {
-            progressText.textContent = 'Loading remaining images...';
-        }
-        
-        // Phase 2: Load normal images in background
-        if (normalImages.length > 0) {
-            loadImageBatch(normalImages, 70, 30, 'normal');
-        } else {
-            actualProgress = 100;
-        }
-    });
+    // Load ALL images in parallel with aggressive settings
+    loadAllImagesAggressive(allImages);
     
-    // Progress monitoring
+    // Fast progress monitoring
     progressInterval = setInterval(() => {
         updateProgressBar();
-        
-        // Auto-complete if critical images are loaded and minimum time passed
-        if (criticalImagesLoaded && currentProgress >= 85) {
-            actualProgress = 100;
-            updateProgressBar();
-        }
-    }, 150);
+    }, 50);
 }
 
-// Categorize images by priority
-function categorizeImagesByPriority() {
-    const criticalImages = [];
-    const normalImages = [];
+// Get all image URLs
+function getAllImageUrls() {
+    const urls = new Set();
     
     try {
-        // Critical: Logo and first few hairstyle images
-        criticalImages.push('images/logo.jpg');
+        // Add logo
+        urls.add('images/logo.jpg');
         
-        // Critical: First 10 hairstyle images for initial display
+        // Add all hairstyle images
         if (typeof hairstyles !== 'undefined' && Array.isArray(hairstyles)) {
-            const firstHairstyles = hairstyles.slice(0, 10);
-            firstHairstyles.forEach(hairstyle => {
+            hairstyles.forEach(hairstyle => {
                 if (hairstyle.images && Array.isArray(hairstyle.images)) {
-                    // Take first image from each of first 10 hairstyles
-                    if (hairstyle.images[0]) {
-                        criticalImages.push(hairstyle.images[0]);
-                    }
-                }
-            });
-        }
-        
-        // Normal: All other images
-        if (typeof hairstyles !== 'undefined' && Array.isArray(hairstyles)) {
-            hairstyles.forEach((hairstyle, index) => {
-                if (hairstyle.images && Array.isArray(hairstyle.images)) {
-                    hairstyle.images.forEach((imgPath, imgIndex) => {
-                        // Skip first image of first 10 hairstyles (already in critical)
-                        if (!(index < 10 && imgIndex === 0)) {
-                            normalImages.push(imgPath);
+                    hairstyle.images.forEach(imgPath => {
+                        if (imgPath) {
+                            urls.add(imgPath);
                         }
                     });
-                }
-                
-                // Add gifs to normal priority
-                if (hairstyle.gif) {
-                    normalImages.push(hairstyle.gif);
                 }
             });
         }
         
     } catch (error) {
-        console.error('Error categorizing images:', error);
+        console.error('Error getting image URLs:', error);
     }
     
-    return { criticalImages, normalImages };
+    return Array.from(urls);
 }
 
-// Load images in batches with progress tracking
-async function loadImageBatch(imageUrls, startProgress, progressRange, priority) {
+// Load all images aggressively in parallel
+function loadAllImagesAggressive(imageUrls) {
     const batchSize = LOADING_CONFIG.batchSize;
     const parallelLoads = LOADING_CONFIG.parallelLoads;
     
+    // Load in large batches for maximum speed
     for (let i = 0; i < imageUrls.length; i += batchSize) {
         const batch = imageUrls.slice(i, i + batchSize);
-        const batchProgress = (i / imageUrls.length) * progressRange;
         
-        // Load batch in parallel
-        const promises = [];
+        // Load each batch with maximum parallelism
         for (let j = 0; j < batch.length; j += parallelLoads) {
             const parallelBatch = batch.slice(j, j + parallelLoads);
             
-            const batchPromises = parallelBatch.map(url => 
-                preloadImage(url).then(() => {
+            // Load all images in this parallel batch
+            parallelBatch.forEach(url => {
+                preloadImageFast(url).then(() => {
                     loadedImages++;
-                    // Update progress based on batch completion
-                    const currentBatchProgress = ((i + j) / imageUrls.length) * progressRange;
-                    actualProgress = Math.min(95, startProgress + currentBatchProgress);
-                })
-            );
-            
-            promises.push(...batchPromises);
-            
-            // Small delay between parallel batches to avoid overwhelming GitHub
-            if (priority === 'normal') {
-                await new Promise(resolve => setTimeout(resolve, LOADING_CONFIG.lowPriorityDelay));
-            }
+                    // Update progress immediately
+                    actualProgress = Math.min(99, Math.round((loadedImages / totalImages) * 100));
+                });
+            });
         }
-        
-        await Promise.allSettled(promises);
-        
-        console.log(`✅ ${priority} batch ${Math.floor(i/batchSize) + 1} loaded: ${loadedImages}/${totalImages}`);
     }
-    
-    // Mark this phase as complete
-    actualProgress = startProgress + progressRange;
 }
 
-// Optimized image preloading
-function preloadImage(src) {
+// Ultra-fast image preloading
+function preloadImageFast(src) {
     return new Promise((resolve) => {
         const img = new Image();
         
-        // Set timeout for GitHub hosting (8 seconds max per image)
+        // Very short timeout for speed
         const timeout = setTimeout(() => {
-            console.log(`⏰ Timeout: ${src}`);
+            console.log(`⚡ Fast timeout: ${src}`);
+            loadedImages++; // Count timeout as loaded to keep progress moving
             resolve();
-        }, 8000);
+        }, 2000); // Only 2 seconds per image
         
         img.onload = () => {
             clearTimeout(timeout);
@@ -469,27 +354,42 @@ function preloadImage(src) {
         
         img.onerror = () => {
             clearTimeout(timeout);
-            console.log(`⚠️ Failed: ${src}`);
-            resolve(); // Continue even if some images fail
+            console.log(`⚠️ Fast failed: ${src}`);
+            loadedImages++; // Count errors as loaded to keep progress moving
+            resolve();
         };
         
-        // Start loading
+        // Start loading immediately
         img.src = src;
+        
+        // For GitHub hosting, add cache-busting if needed
+        if (src.includes('github.io') || src.includes('githubusercontent')) {
+            img.src = src + '?t=' + Date.now();
+        }
     });
 }
 
 // Update progress bar
 function updateProgressBar() {
     if (currentProgress < actualProgress) {
-        currentProgress = Math.min(currentProgress + 2, actualProgress); // Faster progression
+        currentProgress = Math.min(currentProgress + 3, actualProgress); // Very fast progression
         
         const progressFill = document.getElementById('progress-fill');
         if (progressFill) {
             progressFill.style.width = `${currentProgress}%`;
         }
         
-        if (progressText && currentProgress > 0) {
+        if (progressText) {
             progressText.textContent = `${Math.round(currentProgress)}%`;
+            
+            // Update text based on progress
+            if (currentProgress < 30) {
+                progressText.textContent = 'Loading images...';
+            } else if (currentProgress < 70) {
+                progressText.textContent = `Loading... ${Math.round(currentProgress)}%`;
+            } else {
+                progressText.textContent = `Almost ready... ${Math.round(currentProgress)}%`;
+            }
         }
     }
 }
@@ -510,7 +410,7 @@ function startTypingEffect() {
             if (currentCharIndex <= 0) {
                 isDeleting = false;
                 currentTextIndex = (currentTextIndex + 1) % LOADING_CONFIG.typingTexts.length;
-                setTimeout(type, 500);
+                setTimeout(type, 300);
                 return;
             }
         } else {
@@ -532,72 +432,51 @@ function startTypingEffect() {
     type();
 }
 
-// Check if data is ready (optimized for GitHub)
+// Check if data is ready - Very lenient for speed
 function isDataReady() {
     try {
-        // Basic checks
-        if (typeof hairstyles === 'undefined' || !Array.isArray(hairstyles)) {
+        // Basic checks only
+        if (typeof hairstyles === 'undefined') {
             return false;
         }
         
-        // Don't require all images to be loaded for GitHub
-        // Just require critical images and basic DOM
-        if (!criticalImagesLoaded) {
-            return false;
+        // Consider ready when most images are loaded
+        if (totalImages > 0 && loadedImages >= totalImages * 0.8) {
+            return true;
         }
         
-        // Basic DOM check
-        if (document.readyState !== 'complete') {
-            return false;
+        // Or if critical progress reached
+        if (currentProgress >= 85) {
+            return true;
         }
         
-        console.log('✅ Data ready for GitHub hosting');
-        return true;
+        return false;
         
     } catch (error) {
         console.error('Error checking data readiness:', error);
-        return false;
+        return true; // Always return true on error to keep things moving
     }
 }
 
-// Complete loading
+// Complete loading immediately
 function completeLoading() {
-    console.log('✅ GitHub loading complete');
+    console.log('⚡ Loading complete - showing content immediately');
     
-    // Final progress update
-    actualProgress = 100;
-    currentProgress = 100;
-    
-    const progressFill = document.getElementById('progress-fill');
-    if (progressFill) {
-        progressFill.style.width = '100%';
-    }
-    
-    if (progressText) {
-        progressText.textContent = '100% - Ready!';
-    }
-    
-    if (typingContainer) {
-        typingContainer.innerHTML = 'Welcome!<span class="typing-cursor"></span>';
-    }
-    
-    // Cache for future visits
+    // Mark as cached
     localStorage.setItem(LOADING_CONFIG.cacheKey, 'true');
     sessionStorage.setItem(LOADING_CONFIG.animationShownKey, 'true');
     
-    // Faster completion for GitHub
-    setTimeout(() => {
-        if (loadingOverlay) {
-            loadingOverlay.style.animation = 'fadeOut 0.5s ease forwards';
-            
-            setTimeout(() => {
-                if (loadingOverlay && loadingOverlay.parentNode) {
-                    loadingOverlay.parentNode.removeChild(loadingOverlay);
-                    console.log('🎉 Optimized loading completed');
-                }
-            }, 500);
-        }
-    }, 800);
+    // Hide loading immediately with fast animation
+    if (loadingOverlay) {
+        loadingOverlay.style.animation = 'fadeOut 0.3s ease forwards';
+        
+        setTimeout(() => {
+            if (loadingOverlay && loadingOverlay.parentNode) {
+                loadingOverlay.parentNode.removeChild(loadingOverlay);
+                console.log('🎉 Fast loading completed');
+            }
+        }, 300);
+    }
 }
 
 // Manual control functions
@@ -615,30 +494,23 @@ window.LoadingAnimation = {
         return {
             imagesLoaded: loadedImages,
             totalImages: totalImages,
-            progress: currentProgress,
-            criticalLoaded: criticalImagesLoaded
+            progress: currentProgress
         };
     }
 };
 
-// Initialize
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeLoadingAnimation);
-} else {
-    initializeLoadingAnimation();
-}
+// Initialize immediately - don't wait for DOMContentLoaded
+initializeLoadingAnimation();
 
-// GitHub-optimized window load
+// Also start on window load as backup
 window.addEventListener('load', function() {
-    console.log('🏁 GitHub: Window loaded');
+    console.log('🏁 Window loaded - final speed check');
     
+    // Force complete if still loading after window load
     setTimeout(() => {
-        if (loadingOverlay && loadingOverlay.parentNode && criticalImagesLoaded) {
-            console.log('✅ GitHub: Critical content ready');
-            if (progressInterval) {
-                clearInterval(progressInterval);
-            }
+        if (loadingOverlay && loadingOverlay.parentNode) {
+            console.log('⚡ Window loaded - forcing completion');
             completeLoading();
         }
-    }, 300);
+    }, 500);
 });
