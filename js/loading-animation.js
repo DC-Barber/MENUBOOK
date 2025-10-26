@@ -15,7 +15,7 @@ const LOADING_CONFIG = {
     ],
     
     // Timing
-    minDisplayTime: 5000, // Minimum time to show loading (ms)
+    minDisplayTime: 10000, // Minimum time to show loading (ms)
     typingSpeed: 10,      // Characters per second
     textPause: 1000,      // Pause between texts (ms)
     
