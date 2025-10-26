@@ -30,6 +30,9 @@ let loadingOverlay, progressBar, progressText, typingContainer;
 let progressInterval;
 let currentProgress = 0;
 let actualProgress = 0;
+let totalImages = 0;
+let loadedImages = 0;
+let imagePromises = [];
 
 // Initialize loading animation
 function initializeLoadingAnimation() {
@@ -333,120 +336,158 @@ function startLoadingSequence() {
         }
     }, 100);
     
-    // Fallback: Hide loading after 8 seconds max
+    // Fallback: Hide loading after 15 seconds max
     setTimeout(() => {
         clearInterval(checkLoadingComplete);
         if (progressInterval) {
             clearInterval(progressInterval);
         }
         if (loadingOverlay && loadingOverlay.parentNode) {
+            console.log('⏰ Fallback: Maximum loading time reached');
             completeLoading();
         }
-    }, 8000);
+    }, 15000);
 }
 
-// Start real progress monitoring based on actual resource loading
-function startRealProgressMonitoring() {
-    if (!LOADING_CONFIG.progressBar) return;
+// Preload single image with promise
+function preloadImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            loadedImages++;
+            console.log(`✅ Loaded: ${src}`);
+            resolve(src);
+        };
+        img.onerror = () => {
+            console.log(`❌ Failed to load: ${src}`);
+            resolve(src); // Still resolve to continue progress
+        };
+        img.src = src;
+    });
+}
+
+// Get all image URLs from hairstyles data
+function getAllImageUrls() {
+    const urls = new Set();
     
-    let resourcesLoaded = 0;
-    let totalResources = 0;
-    
-    // Count total images and resources
-    function countResources() {
-        const images = document.querySelectorAll('img');
-        const stylesheets = document.querySelectorAll('link[rel="stylesheet"]');
-        const scripts = document.querySelectorAll('script[src]');
+    try {
+        // Add logo
+        urls.add('images/logo.jpg');
         
-        totalResources = images.length + stylesheets.length + scripts.length;
-        
-        // If no resources found, set a minimum
-        if (totalResources === 0) {
-            totalResources = 10; // Fallback minimum
+        // Add images from hairstyles data
+        if (typeof hairstyles !== 'undefined' && Array.isArray(hairstyles)) {
+            hairstyles.forEach(hairstyle => {
+                if (hairstyle.images && Array.isArray(hairstyle.images)) {
+                    hairstyle.images.forEach(imgPath => {
+                        if (imgPath) {
+                            urls.add(imgPath);
+                        }
+                    });
+                }
+                
+                // Add gif if exists
+                if (hairstyle.gif) {
+                    urls.add(hairstyle.gif);
+                }
+            });
         }
         
-        console.log(`📊 Total resources to load: ${totalResources}`);
-    }
-    
-    // Check resource loading progress
-    function checkResourceProgress() {
-        let loaded = 0;
-        
-        // Check images
+        // Add images from DOM
         document.querySelectorAll('img').forEach(img => {
-            if (img.complete && img.naturalHeight !== 0) {
-                loaded++;
+            if (img.src && !img.src.startsWith('data:')) {
+                urls.add(img.src);
             }
         });
         
-        // Check stylesheets (assume they load quickly)
-        loaded += document.querySelectorAll('link[rel="stylesheet"]').length;
+    } catch (error) {
+        console.error('Error getting image URLs:', error);
+    }
+    
+    return Array.from(urls);
+}
+
+// Start real progress monitoring based on actual image loading
+function startRealProgressMonitoring() {
+    if (!LOADING_CONFIG.progressBar) return;
+    
+    console.log('🔄 Starting real image preloading...');
+    
+    // Get all image URLs to preload
+    const imageUrls = getAllImageUrls();
+    totalImages = imageUrls.length;
+    
+    if (totalImages === 0) {
+        console.log('ℹ️ No images found to preload');
+        actualProgress = 100;
+        return;
+    }
+    
+    console.log(`📊 Total images to preload: ${totalImages}`);
+    console.log('Image URLs:', imageUrls);
+    
+    // Preload all images
+    imagePromises = imageUrls.map(url => preloadImage(url));
+    
+    // Monitor progress
+    progressInterval = setInterval(() => {
+        const progress = totalImages > 0 ? Math.min(95, Math.round((loadedImages / totalImages) * 100)) : 95;
+        actualProgress = progress;
         
-        // Check scripts (assume they load quickly)
-        loaded += document.querySelectorAll('script[src]').length;
-        
-        resourcesLoaded = loaded;
-        actualProgress = Math.min(95, Math.round((resourcesLoaded / totalResources) * 100));
-        
-        console.log(`📈 Progress: ${actualProgress}% (${resourcesLoaded}/${totalResources} resources)`);
+        console.log(`📈 Image loading progress: ${loadedImages}/${totalImages} (${actualProgress}%)`);
         
         updateProgressBar();
         
-        // If all resources are loaded and data is ready, we can complete
-        if (actualProgress >= 95 && isDataReady()) {
+        // Check if all images are loaded
+        if (loadedImages >= totalImages) {
             actualProgress = 100;
             updateProgressBar();
+            console.log('✅ All images loaded successfully!');
+            clearInterval(progressInterval);
         }
-    }
+    }, 100);
     
-    // Update progress bar with smooth animation
-    function updateProgressBar() {
-        if (currentProgress < actualProgress) {
-            currentProgress = Math.min(currentProgress + 1, actualProgress);
-            
-            const progressFill = document.getElementById('progress-fill');
-            if (progressFill) {
-                progressFill.style.width = `${currentProgress}%`;
-            }
-            
-            if (progressText) {
-                progressText.textContent = `${currentProgress}%`;
-                
-                // Add grow effect when progress updates
-                progressText.style.animation = 'none';
-                setTimeout(() => {
-                    progressText.style.animation = 'textGrow 0.3s ease-out, textGlow 2s ease-in-out infinite';
-                }, 10);
-            }
-        }
-    }
-    
-    // Initial count
-    countResources();
-    
-    // Start monitoring
-    progressInterval = setInterval(() => {
-        checkResourceProgress();
+    // Also wait for all promises to resolve
+    Promise.allSettled(imagePromises).then(results => {
+        const successful = results.filter(result => result.status === 'fulfilled').length;
+        const failed = results.filter(result => result.status === 'rejected').length;
         
-        // If data is ready and we're at high progress, complete
-        if (isDataReady() && currentProgress >= 95) {
-            actualProgress = 100;
-            updateProgressBar();
-            setTimeout(() => {
-                if (progressInterval) {
-                    clearInterval(progressInterval);
-                }
-            }, 1000);
+        console.log(`🎯 Image preloading completed: ${successful} successful, ${failed} failed`);
+        
+        // Even if some failed, we consider it complete for UX
+        actualProgress = 100;
+        updateProgressBar();
+        
+        if (progressInterval) {
+            clearInterval(progressInterval);
         }
-    }, 200);
-    
-    // Also check on window load
-    window.addEventListener('load', () => {
-        setTimeout(() => {
-            countResources();
-            checkResourceProgress();
-        }, 100);
     });
+}
+
+// Update progress bar with smooth animation
+function updateProgressBar() {
+    if (currentProgress < actualProgress) {
+        currentProgress = Math.min(currentProgress + 1, actualProgress);
+        
+        const progressFill = document.getElementById('progress-fill');
+        if (progressFill) {
+            progressFill.style.width = `${currentProgress}%`;
+        }
+        
+        if (progressText) {
+            progressText.textContent = `${currentProgress}%`;
+            
+            // Add grow effect when progress updates
+            progressText.style.animation = 'none';
+            setTimeout(() => {
+                progressText.style.animation = 'textGrow 0.3s ease-out, textGlow 2s ease-in-out infinite';
+            }, 10);
+        }
+        
+        // Update typing text based on progress
+        if (typingContainer && currentProgress >= 100) {
+            typingContainer.innerHTML = `Ready!<span class="typing-cursor"></span>`;
+        }
+    }
 }
 
 // Start typing effect
@@ -501,11 +542,13 @@ function isDataReady() {
     try {
         // Check if hairstyles data is loaded and valid
         if (typeof hairstyles === 'undefined' || !hairstyles) {
+            console.log('❌ hairstyles data not ready');
             return false;
         }
         
         // Check if DOM is ready
         if (document.readyState !== 'complete') {
+            console.log('❌ DOM not ready');
             return false;
         }
         
@@ -514,44 +557,27 @@ function isDataReady() {
         const hairstyleGrid = document.getElementById('hairstyleGrid');
         
         if (!mainContent || !hairstyleGrid) {
+            console.log('❌ Main content elements not found');
             return false;
         }
         
         // Check if we have valid hairstyles data
         if (!Array.isArray(hairstyles) || hairstyles.length === 0) {
+            console.log('❌ No hairstyles data');
             return false;
         }
         
-        // Check if critical images are loaded (first few hairstyles)
-        const criticalHairstyles = hairstyles.slice(0, 3);
-        const allCriticalImagesLoaded = criticalHairstyles.every(hairstyle => {
-            return hairstyle.images && 
-                   Array.isArray(hairstyle.images) && 
-                   hairstyle.images.length > 0;
-        });
-        
-        if (!allCriticalImagesLoaded) {
+        // Check if all images are loaded (both from preloading and DOM)
+        if (loadedImages < totalImages) {
+            console.log(`❌ Images still loading: ${loadedImages}/${totalImages}`);
             return false;
-        }
-        
-        // Additional check: see if images are actually in DOM and loaded
-        const visibleImages = document.querySelectorAll('#hairstyleGrid img');
-        if (visibleImages.length > 0) {
-            const loadedImages = Array.from(visibleImages).filter(img => 
-                img.complete && img.naturalHeight !== 0
-            ).length;
-            
-            // Require at least 50% of visible images to be loaded
-            if (loadedImages < Math.floor(visibleImages.length * 0.5)) {
-                return false;
-            }
         }
         
         console.log('✅ All data ready:', {
             hairstylesCount: hairstyles.length,
+            imagesLoaded: `${loadedImages}/${totalImages}`,
             domReady: document.readyState,
-            mainElements: !!mainContent && !!hairstyleGrid,
-            criticalData: allCriticalImagesLoaded
+            mainElements: !!mainContent && !!hairstyleGrid
         });
         
         return true;
@@ -577,9 +603,16 @@ function completeLoading() {
         progressText.style.animation = 'textGrow 0.5s ease-out, textGlow 2s ease-in-out infinite';
     }
     
+    if (typingContainer) {
+        typingContainer.innerHTML = 'Ready!<span class="typing-cursor"></span>';
+    }
+    
     // Mark data as cached for future visits
     localStorage.setItem(LOADING_CONFIG.cacheKey, 'true');
     sessionStorage.setItem(LOADING_CONFIG.animationShownKey, 'true');
+    
+    // Cache all loaded images in localStorage for future visits
+    cacheImagesInLocalStorage();
     
     // Final completion with delay to show 100%
     setTimeout(() => {
@@ -595,7 +628,47 @@ function completeLoading() {
                 }
             }, 800);
         }
-    }, 500);
+    }, 1000);
+}
+
+// Cache images in localStorage for faster loading next time
+function cacheImagesInLocalStorage() {
+    try {
+        console.log('💾 Caching images in localStorage...');
+        
+        // Get all loaded images
+        const images = document.querySelectorAll('img');
+        let cachedCount = 0;
+        
+        images.forEach((img, index) => {
+            if (img.src && !img.src.startsWith('data:') && img.complete) {
+                try {
+                    // Create canvas to convert image to base64
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    ctx.drawImage(img, 0, 0);
+                    
+                    const base64 = canvas.toDataURL('image/jpeg', 0.8);
+                    const cacheKey = `cached_image_${index}_${img.src.split('/').pop()}`;
+                    
+                    // Store in localStorage (be mindful of size limits)
+                    if (base64.length < 500000) { // ~500KB limit per image
+                        localStorage.setItem(cacheKey, base64);
+                        cachedCount++;
+                    }
+                } catch (error) {
+                    console.log(`⚠️ Could not cache image: ${img.src}`);
+                }
+            }
+        });
+        
+        console.log(`✅ Cached ${cachedCount} images in localStorage`);
+        
+    } catch (error) {
+        console.error('Error caching images:', error);
+    }
 }
 
 // Manual control functions (for external use)
@@ -629,6 +702,16 @@ window.LoadingAnimation = {
     // Force check data readiness
     checkDataReady: function() {
         return isDataReady();
+    },
+    
+    // Get loading statistics
+    getStats: function() {
+        return {
+            imagesLoaded: loadedImages,
+            totalImages: totalImages,
+            progress: currentProgress,
+            dataReady: isDataReady()
+        };
     }
 };
 
